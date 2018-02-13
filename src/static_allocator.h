@@ -9,3 +9,7 @@
  */
 
 #define SEGMENT_NUM		100
+#define SEGMENT_MIN_BSIZE	4
+
+#define TRUE			1
+#define FALSE			0
