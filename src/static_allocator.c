@@ -14,11 +14,13 @@ typedef struct
 {
 	char *dataPtr;
 	char isUsed;
+	int marker;	/* segments allocated same time will have same marker 0 means it's free */
 }DataSegmentUsage_t;
 
 static DataSegmentUsage_t dataSegm[SEGMENT_NUM] = {0};
 static char isInitialised = FALSE;
 static size_t segmByteSize = 0;
+static int markerCount = 1;	/* Can't be 0, 0 it's free */
 
 int initStaticAllocator(char *data, size_t byteLen)
 {
@@ -26,14 +28,14 @@ int initStaticAllocator(char *data, size_t byteLen)
 
 	if(segBSize < SEGMENT_MIN_BSIZE)
 	{
-		perror("Error: Static memory byte len should be bigger or equal to %d bytes\n", SEGMENT_NUM * SEGMENT_MIN_BSIZE);
+		printf("Error: Static memory byte len should be bigger or equal to %d bytes\n", SEGMENT_NUM * SEGMENT_MIN_BSIZE);
 
 		return FALSE;
 	}
 
 	if(byteLen % SEGMENT_NUM != 0)
 	{
-		perror("Error: Static memory byte len should be multiple to %d bytes\n", SEGMENT_NUM);
+		printf("Error: Static memory byte len should be multiple to %d bytes\n", SEGMENT_NUM);
 
 		return FALSE;
 	}
@@ -47,6 +49,7 @@ int initStaticAllocator(char *data, size_t byteLen)
 	}
 	isInitialised = TRUE;
 	segmByteSize = segBSize;
+	markerCount = 1;
 
 	return TRUE;
 }
@@ -55,7 +58,7 @@ char * my_malloc(size_t bytenum)
 {
 	if(isInitialised == FALSE)
 	{
-		perror("Static allocator isn't initialized\n");
+		printf("Static allocator isn't initialized\n");
 		return NULL;
 	}
 
@@ -84,8 +87,42 @@ char * my_malloc(size_t bytenum)
 	for(int k = startAllocIdx; k <= idx; k++ )
 	{
 		dataSegm[k].isUsed = TRUE;
+		dataSegm[k].marker = markerCount;
 	}
+	markerCount++;
 
 	return allocPtr;
 }
 
+void my_free(char *dataPtr)
+{
+	int idx = 0;
+
+	for(idx = 0; idx < SEGMENT_NUM; idx++)
+	{
+		if(dataSegm[idx].dataPtr == dataPtr)
+			break;
+	}
+
+	if(idx == SEGMENT_NUM)
+	{
+		printf("That mem was not allocated\n");
+		return;
+	}
+
+	int curMarker = dataSegm[idx].marker;
+
+	for(int i = idx; i < SEGMENT_NUM; i++)
+	{
+		if(dataSegm[i].marker == curMarker)
+		{
+			dataSegm[i].isUsed = FALSE;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	return;
+}
